@@ -1,17 +1,17 @@
+
 import React, { useState, useEffect } from 'react';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import './editor.css';
-import * as awarenessProtocol from 'y-protocols/awareness.js'
-// import DoUsername from 'do_username'
+import * as awarenessProtocol from 'y-protocols/awareness.js';
 
 const ydoc = new Y.Doc();
-const ytext = ydoc.getText('content');
+const xmlFragment = ydoc.getXmlFragment('content');
 const provider = new WebsocketProvider('ws://localhost:1234', 'room1', ydoc);
-const undoManager = new Y.UndoManager(ytext);
-let awareness = new awarenessProtocol.Awareness(ydoc)
+const undoManager = new Y.UndoManager(xmlFragment);
+const awareness = new awarenessProtocol.Awareness(ydoc);
 
-awareness = provider.awareness
+provider.awareness = awareness;
 
 provider.on('status', (event) => {
     console.log(event.status, 'from websocket');
@@ -21,28 +21,28 @@ const CollaborativeEditor = () => {
     const [content, setContent] = useState('');
 
     useEffect(() => {
-
-
         const updateContent = () => {
-            setContent(ytext.toString());
+            setContent(xmlFragment.toString());
         };
 
-        ytext.observe(updateContent);
-        updateContent();
-
+        xmlFragment.observe(updateContent);
 
         return () => {
-            ytext.unobserve(updateContent);
+            xmlFragment.unobserve(updateContent);
         };
     }, []);
 
     const handleEditorChange = (newContent) => {
-        ytext.delete(0, ytext.length);
-        ytext.insert(0, newContent);
+        xmlFragment.delete(0, xmlFragment.length);
+
+        const newText = new Y.XmlText();
+        newText.insert(0, newContent);
+        xmlFragment.insert(0, [newText]);
+        // Save the newContent to storage
     };
 
     const handleReset = () => {
-        ytext.delete(0, ytext.length);
+        xmlFragment.delete(0, xmlFragment.length);
         setContent('');
     };
 
@@ -54,8 +54,10 @@ const CollaborativeEditor = () => {
         undoManager.redo();
     };
 
+
+
     return (
-        <div className='container'>
+        <div className='editor2'>
             <p className='heading'>Custom CollaborativeEditor</p>
             <hr />
             <div className='editor'>
@@ -63,6 +65,7 @@ const CollaborativeEditor = () => {
                     value={content}
                     onChange={(e) => handleEditorChange(e.target.value)}
                     className='textArea'
+                    rows={10}
                 />
             </div>
 
@@ -77,9 +80,9 @@ const CollaborativeEditor = () => {
             <button onClick={handleRedo} className='Rbutton'>
                 Redo
             </button>
-            <p>Current user: {awareness.clientID}</p>
         </div>
     );
 };
 
 export default CollaborativeEditor;
+
